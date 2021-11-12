@@ -112,6 +112,72 @@ contract("RockPaperScissors", async accounts => {
         });
     });
 
+    it("can declare winner", async() => {
+        await instance.startGame(accounts[2],'This is a secret game my friend', 3600, {from: accounts[1]})
+        await usdc_instance.mint(accounts[2],2000)
+        await usdc_instance.mint(accounts[1],2000)
+        //approval is required in order to make the deposit
+        await usdc_instance.approve(instance.address,1000, {from: accounts[2]})
+        await instance.deposit(1000,{from:accounts[2]})
+        await usdc_instance.approve(instance.address,1000, {from: accounts[1]})
+        await instance.deposit(1000,{from:accounts[1]})
+        await instance.playerOnePlay(2, accounts[2], 'This is a secret game my friend', {from: accounts[1]})
+        await instance.playerTwoPlay(1, accounts[1], 'This is a secret game my friend', {from: accounts[2]})
+        let result = await instance.declareWinner('This is a secret game my friend', accounts[2], {from: accounts[1]})
+        truffleAssert.eventEmitted(result, 'Completed', (ev) => {
+            return ev.winnerAddress === accounts[1] && ev.choice.toNumber() === 2;
+        });
+    });
 
+    it("cannot declare winner if called from non player", async() => {
+        await instance.startGame(accounts[2],'This is a secret game my friend', 3600, {from: accounts[1]})
+        await usdc_instance.mint(accounts[2],2000)
+        await usdc_instance.mint(accounts[1],2000)
+        //approval is required in order to make the deposit
+        await usdc_instance.approve(instance.address,1000, {from: accounts[2]})
+        await instance.deposit(1000,{from:accounts[2]})
+        await usdc_instance.approve(instance.address,1000, {from: accounts[1]})
+        await instance.deposit(1000,{from:accounts[1]})
+        await instance.playerOnePlay(2, accounts[2], 'This is a secret game my friend', {from: accounts[1]})
+        await instance.playerTwoPlay(1, accounts[1], 'This is a secret game my friend', {from: accounts[2]})
+        let result = await instance.declareWinner('This is a secret game my friend', accounts[2], {from: accounts[3]})
+        truffleAssert.eventEmitted(result, 'Completed', (ev) => {
+            return ev.winnerAddress === accounts[1] && ev.choice.toNumber() === 2;
+        });
+    });
 
+    it("can withdraw prize", async() => {
+        await instance.startGame(accounts[2],'This is a secret game my friend', 3600, {from: accounts[1]})
+        await usdc_instance.mint(accounts[2],2000)
+        await usdc_instance.mint(accounts[1],2000)
+        //approval is required in order to make the deposit
+        await usdc_instance.approve(instance.address,1000, {from: accounts[2]})
+        await instance.deposit(1000,{from:accounts[2]})
+        await usdc_instance.approve(instance.address,1000, {from: accounts[1]})
+        await instance.deposit(1000,{from:accounts[1]})
+        await instance.playerOnePlay(2, accounts[2], 'This is a secret game my friend', {from: accounts[1]})
+        await instance.playerTwoPlay(1, accounts[1], 'This is a secret game my friend', {from: accounts[2]})
+        await instance.declareWinner('This is a secret game my friend', accounts[2], {from: accounts[1]})
+        let result = await instance.withdrawPrize('This is a secret game my friend', {from: accounts[1]})
+        truffleAssert.eventEmitted(result, 'Withdrawed');
+    });
+
+    it("cannot withdraw prize if not winner", async() => {
+        await instance.startGame(accounts[2],'This is a secret game my friend', 3600, {from: accounts[1]})
+        await usdc_instance.mint(accounts[2],2000)
+        await usdc_instance.mint(accounts[1],2000)
+        //approval is required in order to make the deposit
+        await usdc_instance.approve(instance.address,1000, {from: accounts[2]})
+        await instance.deposit(1000,{from:accounts[2]})
+        await usdc_instance.approve(instance.address,1000, {from: accounts[1]})
+        await instance.deposit(1000,{from:accounts[1]})
+        await instance.playerOnePlay(2, accounts[2], 'This is a secret game my friend', {from: accounts[1]})
+        await instance.playerTwoPlay(1, accounts[1], 'This is a secret game my friend', {from: accounts[2]})
+        await instance.declareWinner('This is a secret game my friend', accounts[2], {from: accounts[1]})
+        try {
+            await instance.withdrawPrize('This is a secret game my friend', {from: accounts[2]});
+        }catch(error){
+            assert.equal(error.reason, "You have to win to withdraw the prize");
+        }       
+    });
 });
